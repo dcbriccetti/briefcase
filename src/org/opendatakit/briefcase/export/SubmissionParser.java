@@ -37,6 +37,8 @@ import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -134,7 +136,13 @@ class SubmissionParser {
     });
   }
 
+  private static final Pattern submissionDatePattern = Pattern.compile("submissionDate ?= ?['\"](.*?)['\"]");
+
   private static Optional<OffsetDateTime> readSubmissionDate(Path path) {
+    Matcher m = submissionDatePattern.matcher(UncheckedFiles.readFirstLine(path));
+    if (m.find())
+      return Optional.of(OffsetDateTime.parse(SubmissionMetaData.regularizeDateTime(m.group(1))));
+
     return parse(path).flatMap(document -> {
       XmlElement root = XmlElement.of(document);
       SubmissionMetaData metaData = new SubmissionMetaData(root);
