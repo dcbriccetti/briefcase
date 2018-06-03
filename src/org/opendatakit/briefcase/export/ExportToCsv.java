@@ -41,7 +41,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
+
 import org.bushe.swing.event.EventBus;
+import org.kxml2.kdom.Document;
 import org.opendatakit.briefcase.model.BriefcaseFormDefinition;
 import org.opendatakit.briefcase.reused.BriefcaseException;
 import org.opendatakit.briefcase.reused.UncheckedFiles;
@@ -95,11 +98,12 @@ public class ExportToCsv {
         getMainHeader(formDef.getModel(), formDef.isFileEncryptedForm())
     );
     files.put(formDef.getModel(), mainFile);
+    Map<Path, Document> docsByPath = new WeakHashMap<>();
 
     SubmissionParser
-        .getOrderedListOfSubmissionFiles(formDef.getFormDir(), configuration.getDateRange())
+        .getOrderedListOfSubmissionFiles(formDef.getFormDir(), configuration.getDateRange(), docsByPath)
         .stream()
-        .map(path -> SubmissionParser.parseSubmission(path, formDef.isFileEncryptedForm(), configuration.getPrivateKey()))
+        .map(path -> SubmissionParser.parseSubmission(path, formDef.isFileEncryptedForm(), configuration.getPrivateKey(), docsByPath))
         .filter(Optional::isPresent)
         .map(Optional::get)
         // While we iterate over each submission, take a peek, and

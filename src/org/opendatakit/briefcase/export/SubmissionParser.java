@@ -36,6 +36,7 @@ import java.security.PrivateKey;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -68,7 +69,7 @@ class SubmissionParser {
    * @param formDir   the {@link Path} directory of the form
    * @param dateRange a {@link DateRange} to filter submissions that are contained in it
    */
-  static List<Path> getOrderedListOfSubmissionFiles(Path formDir, DateRange dateRange) {
+  static List<Path> getOrderedListOfSubmissionFiles(Path formDir, DateRange dateRange, Map<Path, Document> docsByPath) {
     Path instancesDir = formDir.resolve("instances");
     if (!Files.exists(instancesDir) || !Files.isReadable(instancesDir))
       return Collections.emptyList();
@@ -78,7 +79,7 @@ class SubmissionParser {
         // Pair each path with the parsed submission date
         .map(submissionPath -> Pair.of(
             submissionPath,
-            readSubmissionDate(submissionPath).orElse(OffsetDateTime.MIN)
+            readSubmissionDate(submissionPath, docsByPath).orElse(OffsetDateTime.MIN)
         ))
         // Filter out submissions outside the given date range
         .filter(pair -> dateRange.contains(pair.getRight()))
@@ -106,9 +107,12 @@ class SubmissionParser {
    *     criteria, or {@link Optional#empty()} otherwise
    * @see #decrypt(Submission)
    */
-  static Optional<Submission> parseSubmission(Path path, boolean isEncrypted, Optional<PrivateKey> privateKey) {
+  static Optional<Submission> parseSubmission(Path path, boolean isEncrypted, Optional<PrivateKey> privateKey, Map<Path, Document> docsByPath) {
     Path workingDir = isEncrypted ? createTempDirectory("briefcase") : path.getParent();
-    return parse(path).flatMap(document -> {
+    Document cachedDocument = docsByPath.get(path);
+    if (cachedDocument == null) log.warn("Not in cache: " + path);
+    Optional<Document> maybeDocument = cachedDocument == null ? parse(path) : Optional.of(cachedDocument);
+    return maybeDocument.flatMap(document -> {
       XmlElement root = XmlElement.of(document);
       SubmissionMetaData metaData = new SubmissionMetaData(root);
 
@@ -134,8 +138,9 @@ class SubmissionParser {
     });
   }
 
-  private static Optional<OffsetDateTime> readSubmissionDate(Path path) {
+  private static Optional<OffsetDateTime> readSubmissionDate(Path path, Map<Path, Document> docsByPath) {
     return parse(path).flatMap(document -> {
+      docsByPath.put(path, document);
       XmlElement root = XmlElement.of(document);
       SubmissionMetaData metaData = new SubmissionMetaData(root);
       return metaData.getSubmissionDate();
