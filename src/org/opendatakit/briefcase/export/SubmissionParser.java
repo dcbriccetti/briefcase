@@ -69,43 +69,6 @@ class SubmissionParser {
   private static final Logger log = LoggerFactory.getLogger(SubmissionParser.class);
   private static final XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 
-  /**
-   * Returns an sorted {@link List} of {@link Path} instances pointing to all the
-   * submissions of a form that belong to the given {@link DateRange}.
-   * <p>
-   * Each file gets briefly parsed to obtain their submission date and use it as
-   * the sorting criteria and for filtering.
-   *
-   * @param formDef
-   * @param dateRange a {@link DateRange} to filter submissions that are contained in it
-   */
-  static List<Path> getOrderedListOfSubmissionFiles(FormDefinition formDef, DateRange dateRange) {
-    Path instancesDir = formDef.getFormDir().resolve("instances");
-    if (!Files.exists(instancesDir) || !Files.isReadable(instancesDir))
-      return Collections.emptyList();
-    // TODO Migrate this code to Try<Pair<Path, Option<OffsetDate>>> to be able to filter failed parsing attempts
-    List<Pair<Path, OffsetDateTime>> paths = new ArrayList<>();
-    list(instancesDir)
-        .filter(UncheckedFiles::isInstanceDir)
-        .forEach(instanceDir -> {
-          Path submissionFile = instanceDir.resolve("submission.xml");
-          try {
-            Optional<OffsetDateTime> submissionDate = readSubmissionDate(submissionFile);
-            paths.add(Pair.of(submissionFile, submissionDate.orElse(OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC))));
-          } catch (Throwable t) {
-            log.error("Can't read submission date", t);
-            EventBus.publish(ExportEvent.failureSubmission(formDef, instanceDir.getFileName().toString(), t));
-          }
-        });
-    return paths.stream()
-        // Filter out submissions outside the given date range
-        .filter(pair -> dateRange.contains(pair.getRight()))
-        // Sort them and return a list of paths
-        .sorted(comparingLong(pair -> pair.getRight().toInstant().toEpochMilli()))
-        .map(Pair::getLeft)
-        .collect(toList());
-  }
-
   static Stream<Path> getListOfSubmissionFiles(FormDefinition formDef, DateRange dateRange) {
     Path instancesDir = formDef.getFormDir().resolve("instances");
     if (!Files.exists(instancesDir) || !Files.isReadable(instancesDir))

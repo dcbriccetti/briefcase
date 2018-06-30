@@ -69,9 +69,10 @@ public class ExportToCsv {
   public static ExportOutcome export(FormDefinition formDef, ExportConfiguration configuration, boolean exportMedia) {
     long start = System.nanoTime();
     // Create an export tracker object with the total number of submissions we have to export
-    long submissionCount = walk(formDef.getFormDir().resolve("instances"))
-        .filter(UncheckedFiles::isInstanceDir)
-        .count();
+    long submissionCount;
+    try (Stream<Path> dirStream = walk(formDef.getFormDir().resolve("instances"))) {
+      submissionCount = dirStream.filter(UncheckedFiles::isInstanceDir).count();
+    }
     ExportProcessTracker exportTracker = new ExportProcessTracker(formDef, submissionCount);
     exportTracker.start();
 
@@ -81,10 +82,13 @@ public class ExportToCsv {
 
     List<OutputFile> outputFiles = new ArrayList<>();
     outputFiles.add(OutputFile.mainFile(formDef, configuration, exportMedia));
-    outputFiles.addAll(formDef.getModel().getRepeatableFields().stream().map(groupModel -> OutputFile.repeatFile(formDef, groupModel, configuration, exportMedia)).collect(Collectors.toList()));
+    Stream<Model> repeatableFields = formDef.getModel().getRepeatableFields().stream();
+    outputFiles.addAll(repeatableFields.map(groupModel ->
+        OutputFile.repeatFile(formDef, groupModel, configuration, exportMedia)
+    ).collect(Collectors.toList()));
 
-    SubmissionParser
-        .getListOfSubmissionFiles(formDef, configuration.getDateRange())
+    Stream<Path> submissionFiles = SubmissionParser.getListOfSubmissionFiles(formDef, configuration.getDateRange());
+    submissionFiles
         .map(path -> SubmissionParser.parseSubmission(path, formDef.isFileEncryptedForm(), configuration.getPrivateKey()))
         .filter(Optional::isPresent)
         .map(Optional::get)
@@ -130,21 +134,20 @@ public class ExportToCsv {
       Path output = configuration.getExportDir()
           .orElseThrow(BriefcaseException::new)
           .resolve(configuration.getExportFileName().orElse(stripIllegalChars(formDefinition.getFormName()) + ".csv"));
-      Function<Submission, Pair<OffsetDateTime, String>> submissionMapper = submission -> Pair.of(
-          submission.getSubmissionDate().orElse(MIN_SUBMISSION_DATE),
-          getMainSubmissionLines(
-              submission,
-              formDefinition.getModel(),
-              formDefinition.isFileEncryptedForm(),
-              exportMedia,
-              configuration.getExportMediaPath()
-          )
-      );
       return new OutputFile(
           getMainHeader(formDefinition.getModel(), formDefinition.isFileEncryptedForm()),
           output,
           configuration.getOverwriteExistingFiles().orElse(false),
-          submissionMapper
+          submission -> Pair.of(
+              submission.getSubmissionDate().orElse(MIN_SUBMISSION_DATE),
+              getMainSubmissionLines(
+                  submission,
+                  formDefinition.getModel(),
+                  formDefinition.isFileEncryptedForm(),
+                  exportMedia,
+                  configuration.getExportMediaPath()
+              )
+          )
       );
     }
 
