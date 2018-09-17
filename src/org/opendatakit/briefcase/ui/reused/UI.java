@@ -39,7 +39,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.SwingWorker;
+import javax.swing.SwingUtilities;
 import org.opendatakit.briefcase.model.FormStatus;
 
 public class UI {
@@ -83,17 +83,11 @@ public class UI {
    * Pops an informative dialog up
    */
   public static void infoMessage(String title, String message, boolean blockUI) {
-    if (blockUI) {
-      JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE);
-    } else {
-      new SwingWorker() {
-        @Override
-        protected Object doInBackground() {
-          JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE);
-          return null;
-        }
-      }.execute();
-    }
+    Runnable dialog = () -> JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE);
+    if (blockUI)
+      dialog.run();
+    else
+      SwingUtilities.invokeLater(dialog);
   }
 
   /**
@@ -131,17 +125,11 @@ public class UI {
    * Pops an error dialog up.
    */
   public static void errorMessage(String title, String message, boolean blockUI) {
-    if (blockUI) {
-      JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE);
-    } else {
-      new SwingWorker() {
-        @Override
-        protected Object doInBackground() {
-          JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE);
-          return null;
-        }
-      }.execute();
-    }
+    Runnable dialog = () -> JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE);
+    if (blockUI)
+      dialog.run();
+    else
+      SwingUtilities.invokeLater(dialog);
   }
 
   private static JDialog buildDialogParent() {
