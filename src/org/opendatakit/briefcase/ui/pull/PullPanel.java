@@ -23,8 +23,12 @@ import static org.opendatakit.briefcase.model.BriefcasePreferences.USERNAME;
 import static org.opendatakit.briefcase.model.BriefcasePreferences.getStorePasswordsConsentProperty;
 import static org.opendatakit.briefcase.ui.reused.UI.errorMessage;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import javax.swing.JPanel;
+import javax.swing.SwingWorker;
+
 import org.bushe.swing.event.annotation.AnnotationProcessor;
 import org.bushe.swing.event.annotation.EventSubscriber;
 import org.opendatakit.briefcase.model.BriefcasePreferences;
@@ -37,7 +41,6 @@ import org.opendatakit.briefcase.pull.PullEvent;
 import org.opendatakit.briefcase.reused.BriefcaseException;
 import org.opendatakit.briefcase.reused.RemoteServer;
 import org.opendatakit.briefcase.reused.http.Http;
-import org.opendatakit.briefcase.reused.http.HttpException;
 import org.opendatakit.briefcase.transfer.TransferForms;
 import org.opendatakit.briefcase.ui.reused.Analytics;
 import org.opendatakit.briefcase.ui.reused.source.Source;
@@ -68,31 +71,14 @@ public class PullPanel {
 
     // Read prefs and load saved remote server if available
     source = RemoteServer.readPreferences(tabPreferences).flatMap(view::preloadSource);
-    source.ifPresent(source -> {
-      try {
-        forms.load(source.getFormList());
-        view.refresh();
-        updateActionButtons();
-      } catch (HttpException e) {
-        log.warn("Unable to get form list from {}", source.getDescription(), e);
-        // We need to launch the dialog in the background because,
-        // at this point, the main frame won't be rendered yet
-        errorMessage("Error Preloading Forms", "We haven't been able to preload forms using the saved source. Try reloading it or reset it, please.", false);
-      }
-    });
+    source.ifPresent(source -> new FormLoader(forms, source, view).execute());
 
     // Register callbacks to view events
     view.onSource(source -> {
-      try {
-        this.source = Optional.of(source);
-        Source.clearAllPreferences(tabPreferences);
-        source.storePreferences(tabPreferences, getStorePasswordsConsentProperty());
-        forms.load(source.getFormList());
-        view.refresh();
-        updateActionButtons();
-      } catch (HttpException e) {
-        errorMessage("Error Reloading Forms", "We haven't been able to reload forms using the saved source. Try again or reset it, please.");
-      }
+      this.source = Optional.of(source);
+      Source.clearAllPreferences(tabPreferences);
+      source.storePreferences(tabPreferences, getStorePasswordsConsentProperty());
+      new FormLoader(forms, source, view).execute();
     });
 
     view.onReset(() -> {
@@ -196,5 +182,38 @@ public class PullPanel {
       }
     }
     analytics.event("Pull", "Transfer", "Success", null);
+  }
+
+  /** Loads forms in the background, and updates the UI in the event-dispatching thread when done */
+  private class FormLoader extends SwingWorker<List<FormStatus>, Object> {
+    private final TransferForms forms;
+    private final Source<?> source;
+    private final TransferPanelForm view;
+
+    FormLoader(TransferForms forms, Source<?> source, TransferPanelForm view) {
+      this.forms = forms;
+      this.source = source;
+      this.view = view;
+    }
+
+    @Override protected List<FormStatus> doInBackground() {
+      return source.getFormList();
+    }
+
+    @Override protected void done() {
+      try {
+        List<FormStatus> formList = get();  // get() can throw the exceptions below
+        forms.load(formList);
+        view.refresh();
+        updateActionButtons();
+      } catch (InterruptedException exc) {
+        log.warn("Unexpected InterruptedException throw from SwingWorker.get");  // Should never happen
+      } catch (ExecutionException exc) {
+        String excMsg = exc.getCause().getMessage();
+        log.warn("Unable to get form list from {}", source.getDescription(), excMsg);
+        errorMessage("Error Loading Forms",
+            excMsg + "\nBriefcase hasn’t been able to load forms using the saved source. Try Reload or Reset.", false);
+      }
+    }
   }
 }
