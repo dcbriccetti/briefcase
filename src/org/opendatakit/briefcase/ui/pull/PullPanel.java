@@ -75,6 +75,8 @@ public class PullPanel {
         updateActionButtons();
       } catch (HttpException e) {
         log.warn("Unable to get form list from {}", source.getDescription(), e);
+        // We need to launch the dialog in the background because,
+        // at this point, the main frame won't be rendered yet
         errorMessage("Error preloading forms", "We haven't been able to preload forms using the saved source. Try reloading it or reset it, please.", false);
       }
     });
