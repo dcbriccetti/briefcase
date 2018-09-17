@@ -77,7 +77,7 @@ public class PullPanel {
         log.warn("Unable to get form list from {}", source.getDescription(), e);
         // We need to launch the dialog in the background because,
         // at this point, the main frame won't be rendered yet
-        errorMessage("Error preloading forms", "We haven't been able to preload forms using the saved source. Try reloading it or reset it, please.", false);
+        errorMessage("Error Preloading Forms", "We haven't been able to preload forms using the saved source. Try reloading it or reset it, please.", false);
       }
     });
 
@@ -91,7 +91,7 @@ public class PullPanel {
         view.refresh();
         updateActionButtons();
       } catch (HttpException e) {
-        errorMessage("Error reloading forms", "We haven't been able to reload forms using the saved source. Try again or reset it, please.");
+        errorMessage("Error Reloading Forms", "We haven't been able to reload forms using the saved source. Try again or reset it, please.");
       }
     });
 
