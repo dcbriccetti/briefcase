@@ -83,11 +83,7 @@ public class UI {
    * Pops an informative dialog up
    */
   public static void infoMessage(String title, String message, boolean blockUI) {
-    Runnable dialog = () -> JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE);
-    if (blockUI)
-      dialog.run();
-    else
-      SwingUtilities.invokeLater(dialog);
+    openDialog(blockUI, () -> JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE));
   }
 
   /**
@@ -125,7 +121,10 @@ public class UI {
    * Pops an error dialog up.
    */
   public static void errorMessage(String title, String message, boolean blockUI) {
-    Runnable dialog = () -> JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE);
+    openDialog(blockUI, () -> JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE));
+  }
+
+  private static void openDialog(boolean blockUI, Runnable dialog) {
     if (blockUI)
       dialog.run();
     else
