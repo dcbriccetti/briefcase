@@ -152,7 +152,7 @@ public class PushPanel {
 
   @EventSubscriber(eventClass = RetrieveAvailableFormsFailedEvent.class)
   public void onRetrieveAvailableFormsFailedEvent(RetrieveAvailableFormsFailedEvent event) {
-    errorMessage("Accessing Server Failed", "Accessing the server failed with error: " + event.getReason(), false);
+    errorMessage("Accessing Server Failed", "Accessing the server failed with error: " + event.getReason());
   }
 
   @EventSubscriber(eventClass = SavePasswordsConsentRevoked.class)

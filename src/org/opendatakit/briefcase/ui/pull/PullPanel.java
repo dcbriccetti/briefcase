@@ -138,7 +138,7 @@ public class PullPanel {
 
   @EventSubscriber(eventClass = RetrieveAvailableFormsFailedEvent.class)
   public void onRetrieveAvailableFormsFailedEvent(RetrieveAvailableFormsFailedEvent event) {
-    errorMessage("Accessing Server Failed", "Accessing the server failed with error: " + event.getReason(), false);
+    errorMessage("Accessing Server Failed", "Accessing the server failed with error: " + event.getReason());
   }
 
   @EventSubscriber(eventClass = SavePasswordsConsentRevoked.class)
@@ -212,7 +212,7 @@ public class PullPanel {
         String excMsg = exc.getCause().getMessage();
         log.warn("Unable to get form list from {}", source.getDescription(), excMsg);
         errorMessage("Error Loading Forms",
-            excMsg + "\nBriefcase hasn’t been able to load forms using the saved source. Try Reload or Reset.", false);
+            excMsg + "\nBriefcase hasn’t been able to load forms using the saved source. Try Reload or Reset.");
       }
     }
   }

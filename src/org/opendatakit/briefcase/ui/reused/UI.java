@@ -33,7 +33,6 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -69,73 +68,47 @@ public class UI {
   }
 
   /**
-   * Pops an informative dialog up with some sensible defaults:
+   * Pops up an informative dialog with some sensible defaults:
    * <ul>
    * <li>uses {@link org.opendatakit.briefcase.ui.MainBriefcaseWindow#APP_NAME} as the title</li>
    * <li>blocks the UI</li>
    * </ul>
+   * Must be called from the event-dispatching thread.
    */
   public static void infoMessage(String message) {
-    infoMessage(APP_NAME, message, true);
+    infoMessage(APP_NAME, message);
   }
 
   /**
-   * Pops an informative dialog up
+   * Pops up an informative dialog. Must be called from the event-dispatching thread.
    */
-  public static void infoMessage(String title, String message, boolean blockUI) {
-    openDialog(blockUI, () -> JOptionPane.showMessageDialog(buildDialogParent(), message, title, PLAIN_MESSAGE));
+  public static void infoMessage(String title, String message) {
+    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, message, title, PLAIN_MESSAGE));
   }
 
   /**
-   * Pops a confirmation (YES/NO) dialog up with some sensible defaults:
+   * Pops up a confirmation (YES/NO) dialog with some sensible defaults:
    * <ul>
    * <li>uses {@link org.opendatakit.briefcase.ui.MainBriefcaseWindow#APP_NAME} as the title</li>
    * </ul>
-   * <p>
-   * Confirmation dialogs always block the UI.
+   * Must be called from the event-dispatching thread.
    */
   public static boolean confirm(String message) {
     return confirm(APP_NAME, message);
   }
 
   /**
-   * Pops a confirmation (YES/NO) dialog up.
-   * <p>
-   * Confirmation dialogs always block the UI.
+   * Pops up a confirmation (YES/NO) dialog. Must be called from the event-dispatching thread.
    */
   public static boolean confirm(String title, String message) {
-    return JOptionPane.showConfirmDialog(buildDialogParent(), message, title, YES_NO_OPTION, PLAIN_MESSAGE) == YES_OPTION;
+    return JOptionPane.showConfirmDialog(null, message, title, YES_NO_OPTION, PLAIN_MESSAGE) == YES_OPTION;
   }
 
   /**
-   * Pops an error dialog up with some sensible defaults:
-   * <ul>
-   * <li>blocks the UI</li>
-   * </ul>
+   * Pops up an error dialog. May be called from any thread.
    */
   public static void errorMessage(String title, String message) {
-    errorMessage(title, message, true);
-  }
-
-  /**
-   * Pops an error dialog up.
-   */
-  public static void errorMessage(String title, String message, boolean blockUI) {
-    openDialog(blockUI, () -> JOptionPane.showMessageDialog(buildDialogParent(), buildScrollPane(message), title, ERROR_MESSAGE));
-  }
-
-  private static void openDialog(boolean blockUI, Runnable dialog) {
-    if (blockUI)
-      dialog.run();
-    else
-      SwingUtilities.invokeLater(dialog);
-  }
-
-  private static JDialog buildDialogParent() {
-    JDialog dialog = new JDialog();
-    // We want all dialogs show on top
-    dialog.setAlwaysOnTop(true);
-    return dialog;
+    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, buildScrollPane(message), title, ERROR_MESSAGE));
   }
 
   private static JScrollPane buildScrollPane(String message) {
